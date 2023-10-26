@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 
 var scene, renderer, camera;
-//var globe;
+
 var controls;
 
 init();
