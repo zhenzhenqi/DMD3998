@@ -1,6 +1,15 @@
 {
+  "name": "w9_glb",
+  "version": "1.0.0",
+  "description": "",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "three": "^0.157.0"
+    "three": "^0.158.0"
   },
   "devDependencies": {
     "vite": "^4.5.0"
