@@ -1,3 +1,5 @@
+//@ts-check
+
 import * as THREE from 'three';
 
 import {
@@ -9,20 +11,28 @@ import {
 } from 'three/addons/controls/PointerLockControls.js';
 
 let camera, scene, renderer, clock, controls;
-const objects = [];
+
+
+let collidableObjects = [];
+
+
 let loader, mixers, models;
 let raycaster;
 
 // Controls setup
 let moveForward = false;
-let moveBackward = false;
+
 let moveLeft = false;
 let moveRight = false;
+let moveBackward = false;
 let canJump = false;
 
 let prevTime = performance.now();
 const velocity = new THREE.Vector3();
 const direction = new THREE.Vector3();
+
+let clockLoaded, flowerLoaded;
+let clockAction, flowerAction; // References to animation actions
 
 
 init();
@@ -37,7 +47,7 @@ function init() {
     camera.lookAt(0, 1, 0);
 
     controls = new PointerLockControls(camera, document.body);
-    
+
     const blocker = document.getElementById('blocker');
     const instructions = document.getElementById('instructions');
 
@@ -61,7 +71,7 @@ function init() {
 
     });
 
-    
+
     scene = new THREE.Scene();
     scene.add(controls.getObject());
     scene.background = new THREE.Color(0xa0a0a0);
@@ -146,7 +156,10 @@ function init() {
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
 
-    raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 10);
+    raycaster = new THREE.Raycaster();
+    //    raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 10);
+    raycaster.near = 0.1;
+    raycaster.far = 10; // Only detect collisions within 10 units from the camera
 
 
     // ground
@@ -161,39 +174,62 @@ function init() {
     // GLTF Loader
     loader = new GLTFLoader();
     mixers = []; // Array to hold AnimationMixers
-    models = [
-        {
-            path: 'models/clock.glb',
-            position: new THREE.Vector3(-4, 15, 10),
-            rotation: new THREE.Euler(Math.PI, 0, 0),
-            scale: new THREE.Vector3(1, 1, 1)
-        },
-        {
-            path: 'models/blue_flower_animated.glb',
-            position: new THREE.Vector3(2, 0, 0),
-            rotation: new THREE.Euler(0, 0, 0),
-            scale: new THREE.Vector3(5, 5, 5)
-        }
-    ];
 
-    models.forEach((model) => {
-        loader.load(model.path, (gltf) => {
-            gltf.scene.position.copy(model.position); // Set model position
-            gltf.scene.rotation.copy(model.rotation);
-            gltf.scene.scale.copy(model.scale);
-            scene.add(gltf.scene);
+    let clockModel = {
+        path: 'models/clock.glb',
+        position: new THREE.Vector3(-4, 15, 10),
+        rotation: new THREE.Euler(Math.PI, 0, 0),
+        scale: new THREE.Vector3(1, 1, 1)
+    }
 
+    let flowerModel =
+    {
+        path: 'models/blue_flower_animated.glb',
+        position: new THREE.Vector3(2, 0, 0),
+        rotation: new THREE.Euler(0, 0, 0),
+        scale: new THREE.Vector3(8, 8, 8)
+    }
 
-            // Set up animation
-            if (gltf.animations.length) {
-                const mixer = new THREE.AnimationMixer(gltf.scene);
-                mixers.push(mixer);
-                const action = mixer.clipAction(gltf.animations[0]); // Play the first animation
-//                action.play();
-            }
-        }, undefined, (error) => {
-            console.error('An error happened', error);
+    function loadModel(model) {
+        return new Promise((resolve, reject) => {
+            loader.load(model.path, (gltf) => {
+                // Set model position, rotation, and scale
+                gltf.scene.position.copy(model.position);
+                gltf.scene.rotation.copy(model.rotation);
+                gltf.scene.scale.copy(model.scale);
+                scene.add(gltf.scene);
+
+                // Handle animations
+                if (gltf.animations.length) {
+                    let mixer = new THREE.AnimationMixer(gltf.scene);
+                    mixers.push(mixer);
+                }
+
+                // Add to collidable objects
+                collidableObjects.push(gltf.scene);
+
+                // Resolve the promise with the loaded model
+                resolve(gltf);
+            }, undefined, (error) => {
+                console.error('An error happened', error);
+                reject(error); // Reject the promise if there's an error
+            });
         });
+    }
+
+
+    loadModel(clockModel).then(gltf => {
+        console.log('Clock model loaded', gltf);
+        clockLoaded = gltf;
+    }).catch(error => {
+        console.error('Error loading clock model', error);
+    });
+
+    loadModel(flowerModel).then(gltf => {
+        console.log('Flower model loaded', gltf);
+        flowerLoaded = gltf;
+    }).catch(error => {
+        console.error('Error loading flower model', error);
     });
 
     renderer = new THREE.WebGLRenderer({
@@ -216,27 +252,71 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
 
     renderer.setSize(window.innerWidth, window.innerHeight);
-
 }
+
+function updateRaycaster() {
+    // Set the raycaster to start at the camera position and cast in the direction the camera is facing
+    raycaster.set(camera.position, camera.getWorldDirection(new THREE.Vector3()));
+}
+
+
+function checkCollision() {
+    const intersects = raycaster.intersectObjects(collidableObjects, true);
+
+    if (intersects.length === 0) {
+        return; // No collision detected
+    }
+
+    console.log("Collision detected with: ", intersects.map(obj => obj.object.name));
+
+    intersects.forEach(intersectedObject => {
+        const name = intersectedObject.object.name;
+
+        if (name.includes('clock') && clockLoaded) {
+            if (!clockAction) {
+                console.log("Initializing clock action");
+                clockAction = new THREE.AnimationMixer(clockLoaded.scene).clipAction(clockLoaded.animations[0]);
+            }
+            if (!clockAction.isRunning()) {
+                console.log("Playing clock animation");
+                clockAction.play();
+            }
+        } else if (name.includes('flower') && flowerLoaded) {
+            if (!flowerAction) {
+                console.log("Initializing flower action");
+                flowerAction = new THREE.AnimationMixer(flowerLoaded.scene).clipAction(flowerLoaded.animations[0]);
+            }
+            if (!flowerAction.isRunning()) {
+                console.log("Playing flower animation");
+                flowerAction.play();
+            }
+        }
+    });
+}
+
+
 
 
 
 function animate() {
     requestAnimationFrame(animate);
+    updateRaycaster();
+    checkCollision();
 
     const delta = clock.getDelta();
     mixers.forEach((mixer) => mixer.update(delta));
 
     const time = performance.now();
 
+
     if (controls.isLocked === true) {
 
         raycaster.ray.origin.copy(controls.getObject().position);
         raycaster.ray.origin.y -= 10;
 
-        const intersections = raycaster.intersectObjects(objects, false);
-
-        const onObject = intersections.length > 0;
+        //        const intersections = raycaster.intersectObjects(objects, false);
+        //
+        //        const onObject = intersections.length > 0;
 
         const delta = (time - prevTime) / 1000;
 
@@ -252,13 +332,12 @@ function animate() {
         if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
         if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
 
-        if (onObject === true) {
-            console.log(intersects[0].object);
-            velocity.y = Math.max(0, velocity.y);
-            canJump = true;
-            
+        //        if (onObject === true) {
+        //            console.log(intersects[0].object);
+        //            velocity.y = Math.max(0, velocity.y);
+        //            canJump = true;
 
-        }
+        // }
 
         controls.moveRight(-velocity.x * delta);
         controls.moveForward(-velocity.z * delta);
