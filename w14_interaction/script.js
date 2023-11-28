@@ -31,8 +31,8 @@ let prevTime = performance.now();
 const velocity = new THREE.Vector3();
 const direction = new THREE.Vector3();
 
-let clockLoaded, flowerLoaded;
-let clockAction, flowerAction; // References to animation actions
+let clockLoaded;
+let clockAction; // References to animation actions
 
 
 init();
@@ -182,13 +182,6 @@ function init() {
         scale: new THREE.Vector3(1, 1, 1)
     }
 
-    let flowerModel =
-    {
-        path: 'models/blue_flower_animated.glb',
-        position: new THREE.Vector3(2, 0, 0),
-        rotation: new THREE.Euler(0, 0, 0),
-        scale: new THREE.Vector3(8, 8, 8)
-    }
 
     function loadModel(model) {
         return new Promise((resolve, reject) => {
@@ -202,11 +195,11 @@ function init() {
                 if (gltf.animations.length) {
                     let mixer = new THREE.AnimationMixer(gltf.scene);
                     mixers.push(mixer);
-    
+
                     // Store the mixer in the loaded model object for later reference
                     gltf.mixer = mixer;
                 }
-    
+
 
                 // Add to collidable objects
                 collidableObjects.push(gltf.scene);
@@ -226,13 +219,6 @@ function init() {
         clockLoaded = gltf;
     }).catch(error => {
         console.error('Error loading clock model', error);
-    });
-
-    loadModel(flowerModel).then(gltf => {
-        console.log('Flower model loaded', gltf);
-        flowerLoaded = gltf;
-    }).catch(error => {
-        console.error('Error loading flower model', error);
     });
 
     renderer = new THREE.WebGLRenderer({
@@ -281,16 +267,6 @@ function checkCollision() {
             }
             if (!clockAction.isRunning()) {
                 clockAction.play();
-            }
-        }else if(name.includes('plastic') && flowerLoaded)
-        {
-            if(!flowerAction)
-            {
-                flowerAction = flowerLoaded.mixer.clipAction(flowerLoaded.animations[0]);                
-            }
-            if(!flowerAction.isRunning())
-            {
-                flowerAction.play();
             }
         }
     });
