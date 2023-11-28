@@ -1,5 +1,58 @@
 //@ts-check
 
+
+/**
+ * SCRIPT LEVEL EXPLAINER
+ * 
+ * [IMPORTS]
+ * |-> THREE.js: A JavaScript library used to create and display animated 3D graphics.
+ * |-> GLTFLoader: For loading 3D models in the GLTF format.
+ * |-> PointerLockControls: For first-person control mechanics.
+ *
+ * [VARIABLE DECLARATIONS]
+ * |-> camera, scene, renderer: Basic elements for any THREE.js application.
+ * |-> clock: Tracks time for animations.
+ * |-> controls: Manages the camera control via mouse/keyboard.
+ * |-> collidableObjects: Stores objects that the player can collide with.
+ * |-> loader, mixers: For loading 3D models and managing their animations.
+ * |-> raycaster: Used for collision detection.
+ * |-> Various variables for managing movement and physics.
+ *
+ * [INITIAL SETUP]
+ * |-> init(): Sets up the camera, scene, lighting, controls, event listeners, and the renderer.
+ * |-> loadModel(): Asynchronously loads 3D models, sets their position, and handles animations.
+ *      |-> Returns a Promise, allowing for asynchronous operations.
+ *      |-> Utilizes GLTFLoader to load models.
+ *      |-> Adds loaded models to the scene and collidableObjects array.
+ * |-> animate(): Animation loop function.
+ *      |-> requestAnimationFrame(animate): Creates a loop that updates the rendering as needed.
+ *      |-> updateRaycaster(): Updates the raycaster for collision detection.
+ *      |-> checkCollision(): Checks for collisions with collidable objects.
+ *      |-> Handles the movement and physics of the camera based on user input.
+ *      |-> Renders the scene from the camera's perspective.
+ *
+ * [EVENT LISTENERS]
+ * |-> For keyboard inputs to control movement.
+ * |-> Window resize event to adjust camera aspect ratio.
+ *
+ * [FUNCTIONALITIES]
+ * |-> Real-time rendering of 3D graphics.
+ * |-> Interactive camera control for exploring the 3D scene.
+ * |-> Collision detection with objects in the scene.
+ * |-> Loading and displaying animated 3D models.
+ * |-> Physics implementation for realistic movements.
+ *
+ * [MAIN EXECUTION]
+ * |-> The script starts by initializing the scene and then enters the animation loop.
+ *
+ * This script is a basic framework for a 3D interactive scene using THREE.js, 
+ * demonstrating fundamental concepts like scene setup, rendering, model loading,
+ * animation, camera controls, and collision detection.
+ */
+
+
+
+
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
