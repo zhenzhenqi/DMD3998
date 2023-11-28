@@ -189,7 +189,7 @@ function init() {
                 const mixer = new THREE.AnimationMixer(gltf.scene);
                 mixers.push(mixer);
                 const action = mixer.clipAction(gltf.animations[0]); // Play the first animation
-                action.play();
+//                action.play();
             }
         }, undefined, (error) => {
             console.error('An error happened', error);
@@ -253,9 +253,10 @@ function animate() {
         if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
 
         if (onObject === true) {
-
+            console.log(intersects[0].object);
             velocity.y = Math.max(0, velocity.y);
             canJump = true;
+            
 
         }
 
