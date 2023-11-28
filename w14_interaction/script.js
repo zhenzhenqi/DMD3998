@@ -199,11 +199,14 @@ function init() {
                 gltf.scene.scale.copy(model.scale);
                 scene.add(gltf.scene);
 
-                // Handle animations
                 if (gltf.animations.length) {
                     let mixer = new THREE.AnimationMixer(gltf.scene);
                     mixers.push(mixer);
+    
+                    // Store the mixer in the loaded model object for later reference
+                    gltf.mixer = mixer;
                 }
+    
 
                 // Add to collidable objects
                 collidableObjects.push(gltf.scene);
@@ -274,20 +277,19 @@ function checkCollision() {
 
         if (name.includes('clock') && clockLoaded) {
             if (!clockAction) {
-                console.log("Initializing clock action");
-                clockAction = new THREE.AnimationMixer(clockLoaded.scene).clipAction(clockLoaded.animations[0]);
+                clockAction = clockLoaded.mixer.clipAction(clockLoaded.animations[0]);
             }
             if (!clockAction.isRunning()) {
-                console.log("Playing clock animation");
                 clockAction.play();
             }
-        } else if (name.includes('flower') && flowerLoaded) {
-            if (!flowerAction) {
-                console.log("Initializing flower action");
-                flowerAction = new THREE.AnimationMixer(flowerLoaded.scene).clipAction(flowerLoaded.animations[0]);
+        }else if(name.includes('plastic') && flowerLoaded)
+        {
+            if(!flowerAction)
+            {
+                flowerAction = flowerLoaded.mixer.clipAction(flowerLoaded.animations[0]);                
             }
-            if (!flowerAction.isRunning()) {
-                console.log("Playing flower animation");
+            if(!flowerAction.isRunning())
+            {
                 flowerAction.play();
             }
         }
