@@ -1,40 +1,44 @@
 //@ts-check
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-import {
-    GLTFLoader
-} from 'three/addons/loaders/GLTFLoader.js';
+// Camera, scene, and renderer declarations
+let camera, scene, renderer;
 
-import {
-    PointerLockControls
-} from 'three/addons/controls/PointerLockControls.js';
+// Clock for animation timing
+let clock;
 
-let camera, scene, renderer, clock, controls;
+// PointerLockControls for camera movement
+let controls;
 
-
+// Array to store collidable objects in the scene
 let collidableObjects = [];
 
+// GLTFLoader for loading 3D models and mixers for animations
+let loader, mixers;
 
-let loader, mixers, models;
+// Raycaster for collision detection
 let raycaster;
 
-// Controls setup
+// Movement controls
 let moveForward = false;
-
 let moveLeft = false;
 let moveRight = false;
 let moveBackward = false;
 let canJump = false;
 
+// Time tracking for movement
 let prevTime = performance.now();
 const velocity = new THREE.Vector3();
 const direction = new THREE.Vector3();
 
+// Variables to manage clock model and its animations
 let clockLoaded;
-let clockAction; // References to animation actions
+let clockAction;
 
-
+// Initialize and animate the scene
 init();
 animate();
 
@@ -182,44 +186,51 @@ function init() {
         scale: new THREE.Vector3(1, 1, 1)
     }
 
-
     function loadModel(model) {
+        // A Promise is used to handle asynchronous operations. It represents a value that may be available now, later, or never.
         return new Promise((resolve, reject) => {
+            // Use the GLTFLoader to load a 3D model
             loader.load(model.path, (gltf) => {
-                // Set model position, rotation, and scale
+                // Set the position, rotation, and scale of the loaded model to match the specified model
                 gltf.scene.position.copy(model.position);
                 gltf.scene.rotation.copy(model.rotation);
                 gltf.scene.scale.copy(model.scale);
+
+                // Add the model to the scene
                 scene.add(gltf.scene);
 
+                // Check if the model has animations
                 if (gltf.animations.length) {
+                    // Create an AnimationMixer to handle the model's animations
                     let mixer = new THREE.AnimationMixer(gltf.scene);
-                    mixers.push(mixer);
+                    mixers.push(mixer); // Add the mixer to the mixers array for later use
 
-                    // Store the mixer in the loaded model object for later reference
+                    // Store the mixer in the loaded model for easy reference
                     gltf.mixer = mixer;
                 }
 
-
-                // Add to collidable objects
+                // Add the model to the list of collidable objects for collision detection
                 collidableObjects.push(gltf.scene);
 
-                // Resolve the promise with the loaded model
+                // Resolve the promise, indicating that the model has been loaded successfully
                 resolve(gltf);
             }, undefined, (error) => {
                 console.error('An error happened', error);
-                reject(error); // Reject the promise if there's an error
+                reject(error); // Reject the promise if an error occurs during loading
             });
         });
     }
 
-
+    // Asynchronously load the clock model
     loadModel(clockModel).then(gltf => {
+        // This code runs after the model has been successfully loaded
         console.log('Clock model loaded', gltf);
-        clockLoaded = gltf;
+        clockLoaded = gltf; // Store the loaded model for later use
     }).catch(error => {
+        // This code runs if there was an error loading the model
         console.error('Error loading clock model', error);
     });
+
 
     renderer = new THREE.WebGLRenderer({
         antialias: true
@@ -275,65 +286,67 @@ function checkCollision() {
 
 
 
-
 function animate() {
+    // Request the browser to perform an animation and call the 'animate' function on the next frame
     requestAnimationFrame(animate);
+
+    // Update the raycaster for collision detection
     updateRaycaster();
     checkCollision();
 
+    // Calculate the time passed since the last frame
     const delta = clock.getDelta();
+
+    // Update all animation mixers for any animations in the scene
     mixers.forEach((mixer) => mixer.update(delta));
 
+    // Get the current time for movement calculations
     const time = performance.now();
 
-
+    // If the camera controls are locked (meaning, user is controlling the camera)
     if (controls.isLocked === true) {
 
+        // Adjust the raycaster's origin to the camera's position for collision detection
         raycaster.ray.origin.copy(controls.getObject().position);
-        raycaster.ray.origin.y -= 10;
+        raycaster.ray.origin.y -= 10; // Move it slightly downwards
 
-        //        const intersections = raycaster.intersectObjects(objects, false);
-        //
-        //        const onObject = intersections.length > 0;
-
+        // Calculate time difference since last movement
         const delta = (time - prevTime) / 1000;
 
+        // Apply friction to slow down movement
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
 
-        velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
+        // Apply gravity effect
+        velocity.y -= 9.8 * 100.0 * delta; // 100.0 represents a 'mass' value
 
+        // Determine the direction of movement based on key presses
         direction.z = Number(moveForward) - Number(moveBackward);
         direction.x = Number(moveRight) - Number(moveLeft);
-        direction.normalize(); // this ensures consistent movements in all directions
+        direction.normalize(); // Normalize the direction for consistent movement speed
 
+        // Adjust velocity based on the direction of movement
         if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
         if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
 
-        //        if (onObject === true) {
-        //            console.log(intersects[0].object);
-        //            velocity.y = Math.max(0, velocity.y);
-        //            canJump = true;
-
-        // }
-
+        // Move the camera based on calculated velocity
         controls.moveRight(-velocity.x * delta);
         controls.moveForward(-velocity.z * delta);
 
-        controls.getObject().position.y += (velocity.y * delta); // new behavior
+        // Apply calculated velocity to camera's vertical position (Y-axis)
+        controls.getObject().position.y += (velocity.y * delta);
 
+        // Check if camera's position is below a certain threshold (to simulate ground level)
         if (controls.getObject().position.y < 10) {
-
-            velocity.y = 0;
-            controls.getObject().position.y = 10;
-
-            canJump = true;
-
+            velocity.y = 0; // Stop vertical movement
+            controls.getObject().position.y = 10; // Set position to ground level
+            canJump = true; // Allow the camera to jump again
         }
-
     }
 
+    // Update the previous time for the next frame
     prevTime = time;
 
+    // Render the scene from the perspective of the camera
     renderer.render(scene, camera);
 }
